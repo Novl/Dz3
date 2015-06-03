@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+	<title> Game </title>
+	<script src="jquery-2.1.4.js" type="text/javascript"> </script>
+	<script src="field.js" type="text/javascript"> </script> 
+	<style>
+	.cells:hover {
+    background: aqua;
+	}
+	</style>
+</head>
+
+<body>
+
+	<div>
+	
+	<input id="player_name" type="text" size="10" title="Enter your name"  value="Name" tabindex="1" maxlength="7">
+	<input id="new_player" type="button" value="Enter game" tabindex="2">
+	<br>
+	<p id="p_name" class="registered"> </p>
+	<br>
+		<div id="State" class="registered" > </div>
+		<table id="table_players">
+		
+		</table>
+	<br>
+	<div class="registered" style="overflow:auto; width:600px; height:320px;"> 
+	<table id="play_board">
+	
+	</table>
+	</div> 
+	
+	</div>
+</body>
+
+</html>
