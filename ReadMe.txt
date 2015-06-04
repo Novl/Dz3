@@ -1,4 +1,4 @@
 Group 
-Chernovol Dmitry - Novl 
-Suevalov Artem - temannnnn 
+Chernovol Dmitry - Novl  - erlang
+Suevalov Artem - temannnnn  - javascript
 
