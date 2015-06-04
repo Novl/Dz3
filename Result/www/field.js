@@ -6,10 +6,10 @@ var json_get_table="api/server/json_read_table/";
 var json_get_state="/api/server/json_get_state/"
 var json_make_move="/api/server/json_make_move/";
 var json_get_players="/api/server/json_get_players/";
+var new_game="/api/server/refresh/";
 var COLORS = ["#AAAADD","red","green","blue","yellow","black"];
 var MY_NUMBER;
 var State=1;
-
 
 function authentification(new_pl_name)
 {
@@ -23,20 +23,18 @@ function authentification(new_pl_name)
 				MY_NUMBER=data.num;
 				alert("Welcome");
 				//---------------------- CREATING INFO
-				$("#p_name").html("Your name is: <font color=\"red\">"+$("#player_name").val()+" (your number:"+MY_NUMBER+")");
+				$("#p_name").html("Your name is: <font color=\"red\">"+$("#player_name").val()+" (your number:"+MY_NUMBER+")<br><br> Your color:");
 				$("#p_name").attr("NUM",MY_NUMBER);
-				var FONT_MENU=$("<font>");
-				var TABLE_MENU=$("<table>");
+				
+				var TABLE_MENU=$("#tab_with_color");
+				TABLE_MENU.empty();
 				var TABLE_MENU_TR=$("<tr>");
 				var TABLE_MENU_TD=$("<td>");
-				TABLE_MENU_TD.attr({"width":SIZE+"px", "bgcolor":COLORS[MY_NUMBER]});
 				TABLE_MENU_TR.attr("height",SIZE+"px");
-				
+				TABLE_MENU_TD.attr("width",SIZE+"px");
 				TABLE_MENU_TD.appendTo(TABLE_MENU_TR);
 				TABLE_MENU_TR.appendTo(TABLE_MENU);
-				FONT_MENU.html("Your colour:");
-				TABLE_MENU.appendTo(FONT_MENU);
-				FONT_MENU.insertAfter($("#p_name"));
+				TABLE_MENU_TD.attr("bgcolor",COLORS[MY_NUMBER]);
 				
 				$("#new_player").css("visibility","hidden");
 				$("#player_name").css("visibility","hidden");
@@ -92,11 +90,11 @@ function Re_draw_table()
 					{
 						var new_col=$("<td>");
 						new_col.attr("width",SIZE+"px");
-						new_col.attr("id",Number((MAX+4)*(i+1)+j+2));
+						new_col.attr("id",Number(MAX*(i-1)+j));
 						new_col.click(function(){Move(this.id);})
 						
 						new_col.addClass("cells");
-						new_col.attr("bgcolor",COLORS[Number(data[Number((MAX+4)*(i+1)+j+2)])]);
+						new_col.attr("bgcolor",COLORS[Number(data[Number(MAX*(i-1)+j)])]);
 						new_col.appendTo(new_str);
 					}
 				}
@@ -120,10 +118,36 @@ function update_state(){
 				if (data.State==0)
 				{
 					alert("Winner :"+data.Winner);
-					//$("#new_player").css("visibility","visible");
-					//$("#new_player").attr("value","New game");
-					//$("#new_player").click(function(){location.replace("localhost:8090")});
-					//$("#new_player").click(function(){ window.open("localhost:8090")});
+					$("#new_player").css("visibility","visible");
+					
+					$("#new_player").attr("value","New game");
+					$("#new_player").unbind("click");
+					$("#new_player").click(function(){
+						$.ajax({
+							url:new_game,
+							dataType: "json",
+							async:"false"
+							}).done(function(data1)
+							{
+								if (data1.Status=="ok")
+									{
+										$("#new_player").unbind("click");
+										$("#new_player").click(function(){authentification($("#player_name").val())});
+										$("#new_player").attr("value","Enter game");
+										$(".unregistered").css("visibility","visible");
+										$(".registered").css("visibility","hidden");
+									}
+								else
+								{
+									alert("New game was started go to url:\"localhost:8090\" to join");
+									$("#new_player").unbind("click");
+									$("#new_player").click(function(){authentification($("#player_name").val())});
+									$("#new_player").attr("value","Enter game");
+									$(".unregistered").css("visibility","visible");
+									$(".registered").css("visibility","hidden");
+								}
+							})
+				})
 				}
 				else
 					setTimeout(function(){Re_draw_table(); update_state();}, 2000);
@@ -137,6 +161,7 @@ function update_state(){
 			}).done(function(data){
 				var table_pl=$("#table_players");
 				table_pl.empty();
+				table_pl.addClass("registered");
 				for (var i=1; i<=5; i++)
 				{
 					if (data[i]!=0)
