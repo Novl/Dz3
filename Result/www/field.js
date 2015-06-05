@@ -51,20 +51,18 @@ function authentification(new_pl_name)
 function Move(CELL)
 {
 	$.ajax({
-							//url:json_make_move+String(MY_NUMBER)+"/"+String((((x.val())-1)*MAX+Number(y.val()))),
-							url:json_make_move+String(MY_NUMBER)+"/"+CELL,
-							dataType: "json",
-							async:"false"
-							}).done(function(data){
-							if (data.Result=="Not available")
-									alert("Not available");
-								else
-									if (data.Result=="Not your turn")
-										alert("Not your turn");
-									else
-										$("#"+CELL).attr("bgcolor",COLORS[MY_NUMBER]);
-						})
-				//$("#"+((Number(x.val())-1)*10+Number(y.val()))).attr("bgcolor","red");
+		url:json_make_move+String(MY_NUMBER)+"/"+CELL,
+		dataType: "json",
+		async:"false"
+		}).done(function(data){
+		if (data.Result=="Not available")
+				alert("Not available");
+			else
+				if (data.Result=="Not your turn")
+					alert("Not your turn");
+				else
+					$("#"+CELL).attr("bgcolor",COLORS[MY_NUMBER]);
+	})
 };
 
 function Re_draw_table()
@@ -98,8 +96,6 @@ function Re_draw_table()
 						new_col.appendTo(new_str);
 					}
 				}
-				//var T = data.responseJSON;
-				//$("td").click(click(MOVE));
 				//--------------------------END DROWING TABLE----------------------------------
 			})
 };
@@ -112,9 +108,6 @@ function update_state(){
 			dataType: "json",
 			async:"false"
 			}).done(function(data){
-			//if (data.State==MY_NUMBER)
-				//alert("Your move!!!");
-			//else
 				if (data.State==0)
 				{
 					alert("Winner :"+data.Winner);
@@ -123,30 +116,30 @@ function update_state(){
 					$("#new_player").attr("value","New game");
 					$("#new_player").unbind("click");
 					$("#new_player").click(function(){
-						$.ajax({
-							url:new_game,
-							dataType: "json",
-							async:"false"
-							}).done(function(data1)
-							{
-								if (data1.Status=="ok")
-									{
-										$("#new_player").unbind("click");
-										$("#new_player").click(function(){authentification($("#player_name").val())});
-										$("#new_player").attr("value","Enter game");
-										$(".unregistered").css("visibility","visible");
-										$(".registered").css("visibility","hidden");
-									}
-								else
+					$.ajax({
+						url:new_game,
+						dataType: "json",
+						async:"false"
+						}).done(function(data1)
+						{
+							if (data1.Status=="ok")
 								{
-									alert("New game was started go to url:\"localhost:8090\" to join");
 									$("#new_player").unbind("click");
 									$("#new_player").click(function(){authentification($("#player_name").val())});
 									$("#new_player").attr("value","Enter game");
 									$(".unregistered").css("visibility","visible");
 									$(".registered").css("visibility","hidden");
 								}
-							})
+							else
+							{
+								alert("New game was started go to url:\"localhost:8090\" to join");
+								$("#new_player").unbind("click");
+								$("#new_player").click(function(){authentification($("#player_name").val())});
+								$("#new_player").attr("value","Enter game");
+								$(".unregistered").css("visibility","visible");
+								$(".registered").css("visibility","hidden");
+							}
+						})
 				})
 				}
 				else
@@ -183,13 +176,8 @@ function update_state(){
 		//-------------------END UPDATE STATE-------------
 }
 
-
-
-
-
 $(document).ready(function(){
 	$(".registered").css("visibility","hidden");
-	
 	//-------------------------GENERATING ACTIONS--------------------	
 	$("#new_player").click(function(){authentification($("#player_name").val())});	
 	//------------------------END GENERATING ACTIONS------------------

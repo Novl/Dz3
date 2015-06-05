@@ -5,9 +5,6 @@
 -export([start/0, start_link/0]).
 -export([req_new_player/3, json_read_table/3, json_get_state/3, json_make_move/3, json_get_players/3, refresh/3]).
 
--export([site_check_line/3, site_check_table/3]).
-
--export([test/3, test1/3, test_cast/3, test_out/3]).
 -export([init/1,
   handle_call/3,
   handle_cast/2,
@@ -20,7 +17,6 @@
 -define(FILE_NAME, "names").
 -define(FILE_NAME_TABLE, "table_cells").
 -define(MOVE_NAME, "moves").
--define(Header,"Content-Type: application/json\r\n\r\n").
 -define(TABLE_SIZE_X, 30).
 -define(TABLE_SIZE_Y, 30).
 -define(SIZE_OF_TABLE, ?TABLE_SIZE_X*?TABLE_SIZE_Y).
@@ -28,9 +24,8 @@
 
 handle_cast(_Request, State) -> {noreply, State}.
 handle_info(_Info, State) -> {noreply, State}.
-terminate(_Reason, _State) -> ok.
+terminate(_Reason, _State) -> dets:close('plyers'), dets:close('moves'), dets:close('table'), ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
-
 
 start() -> start_link().
 
@@ -52,6 +47,7 @@ open_file_names() ->
        io:format("Can't open PLAYERS file: ~s : ~s~n", [Cls, Msg]),
        {error, dberr}
   end.
+
 open_file_table() ->
   try
     dets:open_file('table', [{file, ?FILE_NAME_TABLE}, {auto_save, 1000}, {type, bag}]),
@@ -61,6 +57,7 @@ open_file_table() ->
       io:format("Can't open TABLE file: ~s : ~s~n", [Cls, Msg]),
       {error, dberr}
   end.
+
 open_file_moves() ->
   try
     dets:open_file('moves', [{file, ?MOVE_NAME}, {auto_save, 1000}, {type, bag}]),
@@ -72,31 +69,19 @@ open_file_moves() ->
       {error, dberr}
   end.
 
-
-read_table1(Ind)->
-
-  if
-    Ind == '$end_of_table' -> "";
-    true->
-      Next = dets:next('table',Ind),
-      if
-        Next == '$end_of_table' -> ["\""++integer_to_list(Ind)++"\":\""++ integer_to_list(element(2,element(1, list_to_tuple(dets:lookup('table', Ind)))))++"\""];
-        true -> ["\""++integer_to_list(Ind)++"\":\""++ integer_to_list(element(2,element(1, list_to_tuple(dets:lookup('table', Ind)))))++"\","++read_table(dets:next('table',Ind))]
-      end
-  end.
 init_table(Num) ->
   if
     Num>0 -> dets:insert('table',{Num, 0}), init_table(Num-1);
     true -> []
   end.
+
 read_table(Num)->
   if
     Num>1 -> "\""++integer_to_list(Num)++"\" : \""++ integer_to_list(element(2, element(1,list_to_tuple(dets:lookup('table',Num))))) ++"\" , " ++read_table(Num-1);
     Num==1 -> "\""++"1"++"\" : \""++integer_to_list(element(2, element(1,list_to_tuple(dets:lookup('table',1)))))++"\""
   end.
+
 json_read_table(SessionId, _Env, _Input) -> deliver(SessionId, ["{ " ++ gen_server:call(?LINK, {get_table}) ++ "}"]).
-
-
 
 init_player(Num, Name) ->
   L = length(dets:lookup('players', Num)),
@@ -108,6 +93,7 @@ init_player(Num, Name) ->
   end.
 
 json_get_players(SessionId, _Env, _Input) -> deliver(SessionId, ["{" ++ gen_server:call(?LINK, {get_players})++"}"]).
+
 players_list(Num)->
   if
     Num>0 ->
@@ -156,22 +142,18 @@ parse_move(In)->
     WordCount==2 -> { list_to_integer(string:sub_word(Request, 1, 47)), list_to_integer(string:sub_word(Request, 2, 47))};
     true -> ""
   end.
+
 json_make_move(SessionId, _Env, Input) -> deliver(SessionId, gen_server:call(?LINK, {make_move , parse_move(Input)})).
+
 server_make_move(Num, Cell)->
   S = dets:first('moves'),  % WHO SHOULD MAKE MOVE
   if
     Num==S ->   % Num - WHO WANT MAKE MOVE
-      %Table_cell_num = tuple_size(list_to_tuple(C)),
       C = dets:lookup('table',Cell),
       Table_cell_num = element(2,element(1,list_to_tuple(C))),
       if
         Table_cell_num==0 ->
-          %dets:insert('table', {Cell, Num}),
-          %Sche = check_table(Num, Cell), -  И ГДЕ ОНО ЕГО Б************** МЕНЯЕТ
-          %
-          %
-          %
-          % ЧТО ЧЕРЕЗ 2 СТРОКИ ОНО НЕ ВЕРНО.
+
           dets:delete('table', Cell),
           dets:insert('table', {Cell, Num}),
           Sche = check_table(Num, Cell),
@@ -179,21 +161,15 @@ server_make_move(Num, Cell)->
            Sche==false ->
               dets:delete('moves', Num),
               dets:insert('moves', {(Num rem (dets:info('players',no_objects)))+1 }),
-              %"{ \"Result\" :\"ok\" flag_false }"++atom_to_list(Sche)++" "++integer_to_list(Num)++" "++integer_to_list(Cell)++" check_table: "++erlang:atom_to_list(check_table(Num,Cell));
              "{ \"Result\" :\"ok\"}";
            true ->
-              %dets:delete('moves', Num),
               dets:insert('moves', {0}),
-              %dets:insert('moves', {Num}),
               "{ \"Result\" :\"ok\"}"
           end;
         true -> "{ \"Result\" :\"Not available\" }"
       end;
     true -> "{ \"Result\" :\"Not your turn\"}"
   end.
-
-
-site_check_table(SessionId , _Env, _Input) -> deliver(SessionId, atom_to_list(check_table(list_to_integer(string:sub_word(_Input, 1, 47)),list_to_integer(string:sub_word(_Input, 2, 47))))).
 
 check_table(Num, Cell) ->
    Aa = check_dir(Num, Cell, element(1, ?CHANGE_DIR),0),
@@ -222,9 +198,6 @@ check_dir(Num, Cell, Dir, Step)->
     true -> false
   end.
 
-
-site_check_line(SessionId, _Env, _Input) -> deliver(SessionId, atom_to_list(check_line(1,1,?TABLE_SIZE_X))).
-
 check_line(Num, Cell, Dir) ->
     First =  Cell,
     Second = Cell+Dir,
@@ -242,14 +215,11 @@ check_line(Num, Cell, Dir) ->
           if
             K==true -> true;
             true -> false
-            %true -> ["1-5 false  " , integer_to_list(First)++" ", integer_to_list(Second)++" ", integer_to_list(Third)++" ", integer_to_list(Fourth)++" ", integer_to_list(Fifth)]
           end;
         true -> false
     end.
 
-
 el2(X)-> element(2, element(1, list_to_tuple(dets:lookup('table',X)))).
-
 
 refresh(SessionId, _Env, _Input) -> deliver(SessionId, [gen_server:call(?LINK,{new_game})]).
 
@@ -260,44 +230,12 @@ new_game() ->
     true -> "{ \"Status\":\"already\"}"
   end.
 
+
 handle_call({new_player, "Bad arguments"}, _From, State) -> {reply, integer_to_list(0) , State}; %+
 handle_call({new_player, Name}, _From, State) -> {reply, init_player(1, Name), State};  %+
-%handle_call({get_table}, _From, State) -> {reply, read_table(dets:first('table')), State };  %+
 handle_call({get_table}, _From, State) -> {reply, read_table(?SIZE_OF_TABLE), State };  %+
 handle_call({get_players}, _From, State) -> {reply, players_list(5), State };
 handle_call({get_state}, _From, State) -> {reply, server_get_state() , State}; %+
 handle_call({make_move, {Num, Cell}}, _From, State) -> {reply,  server_make_move(Num, Cell),State};
 handle_call({new_game}, _From, State) -> {reply, new_game() ,State};
 handle_call({test}, _From, State) -> {reply, [], State}.
-
-
-
-
-
-
-
-%
-%move(Num, X, Y) ->
-%Now = dest:first('moves'),
-%  if
-%    Now==Num ->  ;
-%    true ->
-%  end
-
-%test_check(SessionId, _Env, _Input) -> deliver(SessionId,   )
-
-
-test_out(SessionId, _Env, _Input) -> deliver(SessionId, [read_table(4)]).
-
-test(SessionId, _Env, _Input) ->
-  St = gen_server:call(?LINK,{test}),
-  Check = is_list(St),
-  if
-    Check==true -> deliver(SessionId, St);
-    true -> deliver(SessionId, "WAS NOT LIST")
-  end.
-
-test1(SessionId, _Env, _Input) -> deliver(SessionId, _Input).
-%deliver(SessionId, trans(_Input)).
-
-test_cast(SessionId, _Env, _Input) -> deliver(SessionId, [gen_server:cast(?LINK,{call})]).
